@@ -1,0 +1,42 @@
+function fetchAirtableData() {
+    // Airtable API details
+    const apiKey = 'YOUT_API_KEY';
+    const baseId = 'YOUR_BASE_ID';
+    const tableName = 'YOUR_TABLE_NAME';
+
+    // Fetch data from Airtable
+    const url = `https://api.airtable.com/v0/${baseId}/${tableName}`;
+    const headers = {
+        'Authorization': `Bearer ${apiKey}`
+    };
+    const options = {
+        'headers': headers
+    };
+    const response = UrlFetchApp.fetch(url, options);
+    const data = JSON.parse(response.getContentText());
+
+    // Extract header values
+    const header = Object.keys(data.records[0].fields);
+    const resultHeader = [header];
+
+    // Extract data values and handle null values
+    const values = data.records.map(record => {
+        const rowValues = header.map(column => record.fields[column] || null);
+        return rowValues;
+    });
+
+    // Set active sheet
+    const sheet = SpreadsheetApp.getActiveSheet();
+
+    // Print headers in the spreadsheet
+    sheet.getRange(1, 1, 1, header.length).setValues(resultHeader);
+
+    // Set active range
+    const range = sheet.getRange(2, 1, values.length, header.length);
+
+    // Clear existing data in the range
+    range.clearContent();
+
+    // Set data in the range
+    range.setValues(values);
+}

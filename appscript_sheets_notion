@@ -1,0 +1,115 @@
+function fetchAllNotionData() {
+    var pageId = 'YOUR_PAGE_ID';
+    var integrationToken = 'YOUR_INTEGRATION_TOKEN';
+    var baseUrl = 'https://api.notion.com/v1/databases/' + pageId + '/query';
+
+    var allResults = []; // Array to store all fetched results
+
+    // Recursive function to fetch data with pagination
+    function fetchPage(cursor) {
+        var options = {
+            'method': 'post',
+            'headers': {
+                'Authorization': integrationToken,
+                'Notion-Version': '2022-06-28',
+                'Content-Type': 'application/json',
+            },
+            'payload': JSON.stringify({ "page_size": 100, "start_cursor": cursor || undefined })
+        };
+
+        var response = UrlFetchApp.fetch(baseUrl, options);
+        var content = response.getContentText();
+        var responseData = JSON.parse(content);
+
+        if (responseData && responseData.results) {
+            allResults.push(...responseData.results);
+            if (responseData.has_more) {
+                fetchPage(responseData.next_cursor);
+            } else {
+                processResults(allResults);
+            }
+        } else {
+            Logger.log('No data retrieved from Notion API');
+        }
+    }
+
+    fetchPage(null); // Start fetching with no cursor initially
+}
+
+function processResults(results) {
+    var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+    sheet.clear(); // Clear existing data
+
+    var header = Object.keys(results[0].properties);
+    var resultHeader = [header];
+
+    sheet.getRange(1, 1, 1, header.length).setValues(resultHeader);
+
+    results.forEach(function (entry) {
+        var entryRow = [];
+        header.forEach(function (prop) {
+            var propValue = '';
+            if (entry.properties[prop]) {
+                propValue = handlePropertyType(entry.properties[prop]);
+            }
+            entryRow.push(propValue);
+        });
+        sheet.appendRow(entryRow);
+    });
+}
+
+
+
+
+function handlePropertyType(property) {
+    if (!property) {
+        Logger.log('Property is null or undefined.');
+        return null; // Or handle the null case appropriately
+    }
+
+    var propType = property.type;
+    switch (propType) {
+        case 'title':
+            return property.title ? property.title[0].plain_text : null;
+        case 'text':
+            return property.text ? property.text.content : null;
+        case 'number':
+            return property.number;
+        case 'select':
+            return property.select ? property.select.name : null;
+        case 'date':
+            return property.date ? property.date.start : null;
+        case 'formula':
+            if (property.formula && property.formula.type) {
+                if (property.formula.type === 'string') {
+                    return property.formula.string;
+                } else if (property.formula.type === 'number') {
+                    return property.formula.number;
+                } else {
+                    return ''; // Handle other types as needed
+                }
+            } else {
+                return null; // Handle null formula or missing type
+            }
+        case 'status':
+            return property.status ? property.status.name : null;
+        case 'relation':
+            return property.relation ? property.relation.string : null;
+        case 'rollup':
+            return property.rollup ? property.rollup.string : null;
+        case 'id':
+            return property.id ? property.id : null;
+        default:
+            return handleUnsupportedType(property);
+    }
+}
+
+function handleUnsupportedType(property) {
+    if (property.rich_text && property.rich_text[0] && property.rich_text[0].text) {
+        return property.rich_text[0].text.content; // Handle unsupported text type
+    } else if (property.number) {
+        return property.number; // Handle unsupported number type
+    } else {
+        return property.checkbox; // Handle unsupported checkbox type
+    }
+}

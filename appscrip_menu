@@ -1,0 +1,7 @@
+function onOpen() {
+    var ui = SpreadsheetApp.getUi();
+    ui.createMenu('Fetch Data')
+        .addItem('Button1Name', 'Function1Name')
+        .addItem('Button2Name', 'Function2Name')
+        .addToUi();
+}
