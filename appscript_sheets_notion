@@ -1,4 +1,4 @@
-function fetchAllNotionData() {
+function ActualizarDatos() {
     var pageId = 'YOUR_PAGE_ID';
     var integrationToken = 'YOUR_INTEGRATION_TOKEN';
     var baseUrl = 'https://api.notion.com/v1/databases/' + pageId + '/query';
@@ -58,9 +58,6 @@ function processResults(results) {
     });
 }
 
-
-
-
 function handlePropertyType(property) {
     if (!property) {
         Logger.log('Property is null or undefined.');
@@ -77,8 +74,12 @@ function handlePropertyType(property) {
             return property.number;
         case 'select':
             return property.select ? property.select.name : null;
+        case 'multi_select':
+            return property.multi_select ? property.multi_select.map(option => option.name).join(', ') : null;
         case 'date':
             return property.date ? property.date.start : null;
+        case 'created_time':
+            return property.created_time ? property.created_time : null;
         case 'formula':
             if (property.formula && property.formula.type) {
                 if (property.formula.type === 'string') {
@@ -94,9 +95,9 @@ function handlePropertyType(property) {
         case 'status':
             return property.status ? property.status.name : null;
         case 'relation':
-            return property.relation ? property.relation.string : null;
+            return property.relation ? property.relation.map(rel => rel.id).join(', ') : null;
         case 'rollup':
-            return property.rollup ? property.rollup.string : null;
+            return property.rollup ? property.rollup.array.map(item => handlePropertyType(item)).join(', ') : null;
         case 'id':
             return property.id ? property.id : null;
         default:
